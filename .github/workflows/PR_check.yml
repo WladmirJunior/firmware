@@ -38,6 +38,11 @@ jobs:
               partitions: { bootloader_addr: "0x0000" },
             }
           - {
+              name: "ESP32-S3 - M5Cardputer ADV + U219",
+              env: "m5stack-cardputer-u219",
+              partitions: { bootloader_addr: "0x0000" },
+            }
+          - {
               name: "ESP32 - M5StickCPlus2",
               env: "m5stack-cplus2",
               partitions: { bootloader_addr: "0x1000" },
