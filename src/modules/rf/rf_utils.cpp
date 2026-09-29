@@ -15,6 +15,42 @@ const int range_limits[4][2] = {
 };
 const char *subghz_frequency_ranges[] = {"300-348 MHz", "387-464 MHz", "779-928 MHz", "All ranges"};
 
+#if defined(M5STACK_U219_CAP)
+namespace {
+constexpr gpio_num_t U219_RF_SW0_PIN = GPIO_NUM_13;
+constexpr uint8_t U219_CC1101_IOCFG2 = 0x00;
+constexpr uint8_t U219_GDO2_FORCE_LOW = 0x2F;
+constexpr uint8_t U219_GDO2_FORCE_HIGH = 0x6F;
+
+void u219SetRfSwitch(float frequency) {
+    // M5Stack U219 official routing:
+    // 315 MHz: SW0=0, SW1=1
+    // 433 MHz: SW0=1, SW1=0
+    // 868/915 MHz: SW0=1, SW1=1
+    bool sw0 = true;
+    bool sw1 = true;
+
+    if (frequency < 374.0f) {
+        sw0 = false;
+        sw1 = true;
+    } else if (frequency < 650.5f) {
+        sw0 = true;
+        sw1 = false;
+    }
+
+    pinMode(U219_RF_SW0_PIN, OUTPUT);
+    digitalWrite(U219_RF_SW0_PIN, sw0 ? HIGH : LOW);
+
+    // RF_SW1 is not a host GPIO: it is driven by CC1101 GDO2.
+    // Force GDO2 high/low through IOCFG2, matching M5Stack's U219 driver.
+    ELECHOUSE_cc1101.SpiWriteReg(
+        U219_CC1101_IOCFG2, sw1 ? U219_GDO2_FORCE_HIGH : U219_GDO2_FORCE_LOW
+    );
+    vTaskDelay(10 / portTICK_PERIOD_MS);
+}
+} // namespace
+#endif
+
 String rf_subghz_header(float frequencyMHz) {
     return "Filetype: Bruce SubGhz File\nVersion 1\n" + String("Frequency: ") +
            String(int(frequencyMHz * 1000000)) + "\n";
@@ -422,6 +458,9 @@ void setMHZ(float frequency) {
 
         if (preciseCalibration && previousMode != 0) ELECHOUSE_cc1101.setSidle();
 
+#if defined(M5STACK_U219_CAP)
+        u219SetRfSwitch(frequency);
+#endif
         ELECHOUSE_cc1101.setMHZ(frequency);
 
         if (preciseCalibration) {

@@ -129,15 +129,54 @@ void _post_setup_gpio() {
     bruceConfigPins.sys_i2c.sda = (gpio_num_t)8;
     bruceConfigPins.sys_i2c.scl = (gpio_num_t)9;
 
+#if defined(M5STACK_U219_CAP)
+    // M5Stack Cap CC1101/NFC (U219) on Cardputer ADV.
+    // GPIO3 powers the cap. The U219 consumes GPIO13/15 for RF switching/GDO0,
+    // so do not expose the default ADV GPS mapping on those pins in this target.
+    pinMode(3, OUTPUT);
+    digitalWrite(3, HIGH);
+    delay(5);
+
+    bruceConfigPins.gps_bus.rx = GPIO_NUM_NC;
+    bruceConfigPins.gps_bus.tx = GPIO_NUM_NC;
+
+    bruceConfigPins.rfModule = CC1101_SPI_MODULE;
+    bruceConfigPins.CC1101_bus.sck = (gpio_num_t)40;
+    bruceConfigPins.CC1101_bus.miso = (gpio_num_t)39;
+    bruceConfigPins.CC1101_bus.mosi = (gpio_num_t)14;
+    bruceConfigPins.CC1101_bus.cs = (gpio_num_t)5;
+    bruceConfigPins.CC1101_bus.io0 = (gpio_num_t)15;
+    bruceConfigPins.CC1101_bus.io2 = GPIO_NUM_NC;
+
+#if !defined(LITE_VERSION)
+    bruceConfigPins.rfidModule = ST25R3916_SPI_MODULE;
+    bruceConfigPins.ST25R_bus.sck = (gpio_num_t)40;
+    bruceConfigPins.ST25R_bus.miso = (gpio_num_t)39;
+    bruceConfigPins.ST25R_bus.mosi = (gpio_num_t)14;
+    bruceConfigPins.ST25R_bus.cs = (gpio_num_t)6;
+    bruceConfigPins.ST25R_bus.io0 = (gpio_num_t)4;
+    bruceConfigPins.ST25R_bus.io2 = GPIO_NUM_NC;
+#endif
+
+    // Keep both devices deselected on the shared SPI bus until a driver owns it.
+    pinMode(5, OUTPUT);
+    digitalWrite(5, HIGH);
+    pinMode(6, OUTPUT);
+    digitalWrite(6, HIGH);
+    pinMode(13, OUTPUT);
+    digitalWrite(13, LOW);
+#else
     bruceConfigPins.gps_bus.rx = (gpio_num_t)15;
     bruceConfigPins.gps_bus.tx = (gpio_num_t)13;
     bruceConfigPins.gpsBaudrate = 115200;
 
+    // Legacy/default Cardputer ADV pinout (PINGEQUA/Hydra-style caps).
     bruceConfigPins.CC1101_bus.sck = (gpio_num_t)40;
     bruceConfigPins.CC1101_bus.miso = (gpio_num_t)39;
     bruceConfigPins.CC1101_bus.mosi = (gpio_num_t)14;
     bruceConfigPins.CC1101_bus.cs = (gpio_num_t)13;
     bruceConfigPins.CC1101_bus.io0 = (gpio_num_t)5;
+#endif
 
     bruceConfigPins.NRF24_bus.sck = (gpio_num_t)40;
     bruceConfigPins.NRF24_bus.miso = (gpio_num_t)39;
