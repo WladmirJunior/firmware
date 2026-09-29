@@ -429,8 +429,9 @@ void setMHZ(float frequency) {
         // M5Stack Cap CC1101 antenna path: the SP3T switches are driven by RF_SW0 (a GPIO) and
         // RF_SW1, which is the CC1101's own GDO2 pin - not routed to the ESP32, so it is forced
         // high/low through IOCFG2. Written on every call because Init() resets IOCFG2.
-        // Truth table taken from M5's driver (uiflow libs/cap/cc1101.py); the docs' table lists
-        // different SW0/SW1 values for 315/433 MHz - if one band comes out deaf, swap them here.
+        // Follow the current M5Stack Cap CC1101 documentation/example truth table:
+        // 315 MHz = SW0 LOW / GDO2 LOW, 433 MHz = SW0 LOW / GDO2 HIGH,
+        // 868/915 MHz = SW0 HIGH / GDO2 HIGH.
         // also: only fires through this setMHZ() wrapper. rf_jammer's direct
         // ELECHOUSE_cc1101.setMHZ() hops bypass it, so hopping across a band boundary keeps the
         // old antenna path. Route those through the wrapper if cross-band jamming is ever needed.
@@ -438,9 +439,9 @@ void setMHZ(float frequency) {
             static uint8_t capBand = 200; // 200 = unknown, forces a settle delay on first use
             uint8_t band = frequency < 374 ? 0 : (frequency < 650.5 ? 1 : 2); // 315 / 433 / 868-915
             pinMode(CAP_CC1101_SW0_PIN, OUTPUT);
-            digitalWrite(CAP_CC1101_SW0_PIN, band == 0 ? LOW : HIGH);
+            digitalWrite(CAP_CC1101_SW0_PIN, band == 2 ? HIGH : LOW);
             // 0x2F = GDO2 forced low, 0x6F = same with the output inverted, i.e. forced high.
-            ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG2, band == 1 ? 0x2F : 0x6F);
+            ELECHOUSE_cc1101.SpiWriteReg(CC1101_IOCFG2, band == 0 ? 0x2F : 0x6F);
             if (band != capBand) {
                 capBand = band;
                 vTaskDelay(10 / portTICK_PERIOD_MS); // time to settle the antenna signal
