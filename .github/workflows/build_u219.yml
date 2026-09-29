@@ -1,0 +1,34 @@
+name: Build Cardputer ADV U219
+
+on:
+  push:
+    branches:
+      - feature/cardputer-adv-u219
+  workflow_dispatch:
+
+jobs:
+  build-u219:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends gcc-multilib libc6-dev-i386
+          pip install platformio requests esptool intelhex
+
+      - name: Build U219 firmware
+        run: platformio run -e m5stack-cardputer-u219
+
+      - name: Upload U219 binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bruce-m5stack-cardputer-u219
+          path: Bruce-*.bin
+          retention-days: 5
+          if-no-files-found: error
