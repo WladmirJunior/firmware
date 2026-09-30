@@ -1709,25 +1709,48 @@ void installAppStoreJS() {
     }
 
     if (!fs->exists("/BruceJS")) {
-        if (!fs->mkdir("/BruceJS")) {
-            displayWarning("Failed to create /BruceJS directory", true);
-            return;
-        }
+        fs->mkdir("/BruceJS");
     }
 
     if (!fs->exists("/BruceJS/Tools")) {
-        if (!fs->mkdir("/BruceJS/Tools")) {
-            displayWarning("Failed to create /BruceJS/Tools directory", true);
-            return;
-        }
+        fs->mkdir("/BruceJS/Tools");
+    }
+
+    if (!fs->exists("/BruceJS/Tools")) {
+        displayWarning("Failed to create /BruceJS/Tools", true);
+        return;
     }
 
     HTTPClient http;
+    http.setReuse(false);
+    http.setTimeout(10000);
+    http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+
+    // Try HTTPS first
     http.begin("https://ghp.iceis.co.uk/service/appstore/");
     int httpCode = http.GET();
+
+    // If HTTPS fails (common on ESP32 due to TLS/Cloudflare handshake or RAM limits), fallback to HTTP
     if (httpCode != 200) {
         http.end();
-        displayWarning("Failed to download App Store", true);
+        log_w("HTTPS App Store download failed (%d), trying HTTP fallback...", httpCode);
+        http.begin("http://ghp.iceis.co.uk/service/appstore/");
+        http.setTimeout(10000);
+        http.setFollowRedirects(HTTPC_STRICT_FOLLOW_REDIRECTS);
+        httpCode = http.GET();
+    }
+
+    if (httpCode != 200) {
+        http.end();
+        displayWarning("Download failed: " + String(httpCode), true);
+        return;
+    }
+
+    String payload = http.getString();
+    http.end();
+
+    if (payload.length() == 0) {
+        displayWarning("Empty App Store payload", true);
         return;
     }
 
@@ -1736,8 +1759,7 @@ void installAppStoreJS() {
         displayWarning("Failed to save App Store", true);
         return;
     }
-    file.print(http.getString());
-    http.end();
+    file.print(payload);
     file.close();
 
     displaySuccess("App Store installed", true);
